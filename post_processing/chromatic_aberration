@@ -1,0 +1,54 @@
+import numpy as np
+import torch
+import cv2
+
+class ChromaticAberration:
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "shift_amount": ("INT", {
+                    "default": 2,
+                    "min": 1,
+                    "max": 10,
+                    "step": 1
+                }),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "chromatic_aberration"
+    CATEGORY = "postprocessing/Effects"
+
+    def chromatic_aberration(self, image: torch.Tensor, shift_amount: int):
+        batch_size, height, width, _ = image.shape
+        result = torch.zeros_like(image)
+
+        for b in range(batch_size):
+            tensor_image = image[b].numpy()
+
+            # Split the image into its color channels
+            b, g, r = cv2.split(tensor_image)
+
+            # Apply chromatic aberration by shifting the color channels
+            # Shift the red channel to the right
+            r_aberrated = np.roll(r, shift_amount, axis=1)
+
+            # Shift the blue channel to the left
+            b_aberrated = np.roll(b, -shift_amount, axis=1)
+
+            # Merge the color channels back into a single image
+            output_image = cv2.merge((b_aberrated, g, r_aberrated))
+
+            tensor = torch.from_numpy(output_image).unsqueeze(0)
+            result[b] = tensor
+
+        return (result,)
+
+NODE_CLASS_MAPPINGS = {
+    "ChromaticAberration": ChromaticAberration,
+}
